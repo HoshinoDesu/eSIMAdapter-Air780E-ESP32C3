@@ -1,0 +1,31 @@
+# Local SDK and Python environment
+/firmware-build/
+/.venv*/
+__pycache__/
+*.py[cod]
+
+# Private configuration and credentials
+/c3/config.lua
+/c3/debug-token.txt
+/c3/settings.json
+.env
+.env.*
+!.env.example
+
+# Generated firmware contains local configuration
+/c3/build/
+/c3/release/
+*.bin
+*.luac
+*.soc
+*.zip
+
+# Local device records and logs
+/c3/*.json
+/*-result.json
+/findings.md
+*.log
+*.jsonl
+
+# Sanitized public firmware package
+!/firmware/prebuilt/air780e-euicc-0.3.11.zip

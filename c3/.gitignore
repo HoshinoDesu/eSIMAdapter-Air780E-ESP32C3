@@ -1,0 +1,9 @@
+config.lua
+debug-token.txt
+settings.json
+build/
+release/
+*.json
+*.jsonl
+*.log
+__pycache__/

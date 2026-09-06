@@ -1,0 +1,107 @@
+diff --git a/components/network/adapter/luat_network_adapter.c b/components/network/adapter/luat_network_adapter.c
+index b245f30..612b1f7 100644
+--- a/components/network/adapter/luat_network_adapter.c
++++ b/components/network/adapter/luat_network_adapter.c
+@@ -8,6 +8,9 @@
+ #include "platform_def.h"
+ #include "ctype.h"
+ #include "luat_network_adapter.h"
++#ifdef LUAT_USE_ESP_CERT_BUNDLE
++#include "esp_crt_bundle.h"
++#endif
+ 
+ #ifndef LWIP_NUM_SOCKETS
+ #define LWIP_NUM_SOCKETS 8
+@@ -714,7 +717,8 @@ static int network_state_connecting(network_ctrl_t *ctrl, OS_EVENT *event, netwo
+ 		{
+ 			mbedtls_ssl_free(ctrl->ssl);
+ 			memset(ctrl->ssl, 0, sizeof(mbedtls_ssl_context));
+-			mbedtls_ssl_setup(ctrl->ssl, ctrl->config);
++			int setup_result = mbedtls_ssl_setup(ctrl->ssl, ctrl->config);
++            if (setup_result != 0) { ctrl->tls_error = setup_result; return -1; }
+ 			// ctrl->ssl->f_set_timer = tls_settimer;
+ 			// ctrl->ssl->f_get_timer = tls_gettimer;
+ 			// ctrl->ssl->p_timer = ctrl;
+@@ -739,6 +743,10 @@ static int network_state_connecting(network_ctrl_t *ctrl, OS_EVENT *event, netwo
+ 	    	do
+ 	    	{
+ 	    		int result = mbedtls_ssl_handshake_step( ctrl->ssl );
++            if (result != 0 && result != MBEDTLS_ERR_SSL_WANT_READ) {
++                ctrl->tls_error = result;
++                ctrl->tls_verify_flags = mbedtls_ssl_get_verify_result(ctrl->ssl);
++            }
+ 	    		switch(result)
+ 	    		{
+ 	    		case MBEDTLS_ERR_SSL_WANT_READ:
+@@ -798,6 +806,10 @@ static int network_state_shakehand(network_ctrl_t *ctrl, OS_EVENT *event, networ
+     	do
+     	{
+     		int result = mbedtls_ssl_handshake_step( ctrl->ssl );
++            if (result != 0 && result != MBEDTLS_ERR_SSL_WANT_READ) {
++                ctrl->tls_error = result;
++                ctrl->tls_verify_flags = mbedtls_ssl_get_verify_result(ctrl->ssl);
++            }
+     		switch(result)
+     		{
+     		case MBEDTLS_ERR_SSL_WANT_READ:
+@@ -914,6 +926,10 @@ static int network_state_on_line(network_ctrl_t *ctrl, OS_EVENT *event, network_
+ 	    	do
+ 	    	{
+ 	    		int result = mbedtls_ssl_handshake_step( ctrl->ssl );
++            if (result != 0 && result != MBEDTLS_ERR_SSL_WANT_READ) {
++                ctrl->tls_error = result;
++                ctrl->tls_verify_flags = mbedtls_ssl_get_verify_result(ctrl->ssl);
++            }
+ 	    		switch(result)
+ 	    		{
+ 	    		case MBEDTLS_ERR_SSL_WANT_READ:
+@@ -1936,6 +1952,10 @@ int network_init_tls(network_ctrl_t *ctrl, int verify_mode)
+ 		mbedtls_ssl_conf_verify(ctrl->config, tls_verify, ctrl);
+ 		// ctrl->config->ca_chain = ctrl->ca_cert;
+ 		mbedtls_ssl_conf_ca_chain(ctrl->config, ctrl->ca_cert, NULL);
++#ifdef LUAT_USE_ESP_CERT_BUNDLE
++        mbedtls_ssl_conf_authmode(ctrl->config, MBEDTLS_SSL_VERIFY_REQUIRED);
++        if (esp_crt_bundle_attach(ctrl->config) != 0) return -1;
++#endif
+ 		// ctrl->config->read_timeout = 20000;
+ 		mbedtls_ssl_conf_read_timeout(ctrl->config, 20000);
+ 		#ifdef MBEDTLS_SSL_RENEGOTIATION
+diff --git a/components/network/adapter/luat_network_adapter.h b/components/network/adapter/luat_network_adapter.h
+index 7be789f..64b4262 100644
+--- a/components/network/adapter/luat_network_adapter.h
++++ b/components/network/adapter/luat_network_adapter.h
+@@ -159,6 +159,8 @@ typedef struct
+     mbedtls_ssl_context *ssl;          /**< mbed TLS control context. */
+     mbedtls_ssl_config *config;          /**< mbed TLS configuration context. */
+     mbedtls_x509_crt *ca_cert;
++    int tls_error;
++    uint32_t tls_verify_flags;
+ #endif
+ 
+ 	CBFuncEx_t user_callback;
+diff --git a/components/network/libhttp/luat_lib_http.c b/components/network/libhttp/luat_lib_http.c
+index 8085cf1..0e95f48 100644
+--- a/components/network/libhttp/luat_lib_http.c
++++ b/components/network/libhttp/luat_lib_http.c
+@@ -399,8 +399,19 @@ int32_t l_http_callback(lua_State *L, void* ptr){
+ 			return 0;
+ 		}else{
+ 			lua_pushinteger(L, msg->arg1); // 把错误码返回去
+-			luat_cbcwait(L, idp, 1);
+-			goto exit;
++			#ifdef LUAT_USE_TLS
++            lua_pushnil(L);
++            lua_pushnil(L);
++            lua_newtable(L);
++            lua_pushinteger(L, http_ctrl->netc->tls_error);
++            lua_setfield(L, -2, "tls_error");
++            lua_pushinteger(L, http_ctrl->netc->tls_verify_flags);
++            lua_setfield(L, -2, "verify_flags");
++            luat_cbcwait(L, idp, 4);
++#else
++            luat_cbcwait(L, idp, 1);
++#endif
++            goto exit;
+ 		}
+ 	}
+ 	

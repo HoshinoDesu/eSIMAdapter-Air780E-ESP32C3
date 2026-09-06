@@ -1,0 +1,127 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SIM 工作台</title><link rel="icon" href="data:,">
+<style>
+:root{font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;color:#18352d;background:#f4f7f5}*{box-sizing:border-box}body{margin:0}header{border-bottom:1px solid #dee7e1;background:#fff;padding:20px max(24px,calc((100vw - 1050px)/2));display:flex;align-items:center;justify-content:space-between}h1{font-size:21px;margin:0;letter-spacing:-.5px}.sub,small{color:#73827a;font-size:12px}.badge{padding:5px 12px;background:#e4f4e9;color:#23784a;border-radius:20px;font-size:12px}main{max-width:1100px;padding:28px 24px;margin:auto}nav{display:flex;gap:8px;margin:0 0 24px}button{font:inherit;cursor:pointer;border:1px solid #dce5df;background:#fff;border-radius:9px;padding:8px 15px;color:inherit}button:hover{border-color:#39895d}button:disabled{opacity:.45;cursor:wait}nav button{border:0;background:transparent}nav button.active,.primary{color:white;background:#226845}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{background:#fff;border:1px solid #e0e7e2;border-radius:14px;padding:22px;margin-bottom:18px}.number{font-size:27px;font-weight:650;margin:8px 0}.label{color:#6f8177;font-size:13px}h2{font-size:17px;margin:0 0 12px}.row{display:flex;justify-content:space-between;align-items:center;gap:12px}.mono{font-family:ui-monospace,monospace;font-size:13px;word-break:break-all}.muted{color:#74847b}.profile{border-top:1px solid #e8ede9;padding:17px 0}.profile:last-child{padding-bottom:0}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.danger{color:#a44339}.hidden{display:none!important}label{display:block;font-size:13px;color:#596e60;margin:16px 0 5px}input:not([type=checkbox]){font:inherit;width:100%;border:1px solid #d6e1d9;border-radius:8px;padding:10px 12px;background:#fbfcfb;color:inherit}.form{max-width:560px}#notice{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);max-width:90%;padding:12px 20px;background:#193c2d;color:#fff;border-radius:12px;box-shadow:0 8px 30px #1233;z-index:9}.message{white-space:pre-wrap;word-break:break-word;margin:10px 0}.foot{font-size:12px;color:#7d8b82;margin-top:20px}progress{width:100%;height:6px;accent-color:#3e9563}a{color:#226845}@media(max-width:650px){.grid{grid-template-columns:1fr;gap:0}main{padding:20px 16px}.row{align-items:flex-start}.card{padding:18px}header{padding:16px}nav{gap:2px}nav button{padding:8px 11px}}
+dialog{border:1px solid #dce5df;border-radius:14px;padding:22px;width:min(480px,calc(100% - 32px));color:inherit;max-height:90vh;overflow:auto}dialog::backdrop{background:#102b2255}textarea{font:inherit;width:100%;border:1px solid #d6e1d9;border-radius:8px;padding:10px 12px;resize:vertical;color:inherit}.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.tag{background:#edf3fa;color:#395777;padding:2px 10px;border-radius:12px;font-size:12px;overflow-wrap:anywhere}summary{cursor:pointer;font-weight:600}.profile strong{overflow-wrap:anywhere}dialog .mono{margin:4px 0 16px}
+.radio-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:20px 0}.radio-grid .identifier{grid-column:span 1}.radio-grid small{display:block;overflow-wrap:anywhere}@media(max-width:650px){.radio-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.radio-grid .identifier{grid-column:1/-1}}
+.overview-actions{margin:0;justify-content:flex-end}.overview-actions button{white-space:nowrap}.identity-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}@media(max-width:650px){.identity-row{grid-template-columns:1fr}}
+</style>
+<header><div><h1>SIM 工作台</h1><div class="sub">CORE-ESP32C3 · AIR780E</div></div><span class="badge" id="online">正在连接</span></header>
+<main><nav><button class="active" data-tab="overview">概览</button><button data-tab="profiles">eSIM 配置</button><button data-tab="sms">短信</button><button data-tab="settings">设置</button></nav>
+<section id="overview"><div class="card"><div class="row"><strong>网络与卡片</strong><div class="actions overview-actions"><button id="refreshModem">刷新状态</button><button id="readEid">刷新卡片</button></div></div><div class="radio-grid"><div><div class="label">注册运营商</div><div id="operator">—</div></div><div><div class="label">漫游</div><div id="roaming">—</div></div><div><div class="label">信号强度</div><div id="signal">—</div><small id="signalDetail"></small></div><div><div class="label">SIM 状态</div><div id="simState">—</div></div><div><div class="label">网络制式</div><div id="networkType">—</div></div><div class="identity-row"><div><div class="label">EID</div><div class="mono" id="eid">正在自动读取…</div></div><div><div class="label">IMEI</div><div id="imei" class="mono">—</div></div><div><div class="label">当前 ICCID</div><div id="currentIccid" class="mono">—</div></div></div><div><div class="label">卡片剩余存储空间</div><div id="cardFree">—</div><small id="cardRam">等待卡片返回容量</small></div><div><div class="label">设备地址</div><div class="mono" id="ip">—</div></div></div><small id="modemUpdated"></small></div>
+<div class="grid"><div class="card"><div class="label">蜂窝模块</div><div class="number" id="ready">—</div><small id="version">等待设备信息</small></div><div class="card"><div class="label">Lua 可用内存</div><div class="number" id="lua">—</div><progress id="luaBar" max="100" value="0"></progress></div><div class="card"><div class="label">系统可用内存</div><div class="number" id="ram">—</div><small id="uptime">—</small></div></div></section>
+<section id="profiles" class="hidden"><div class="card"><div class="row"><h2>已安装配置</h2><button id="refreshProfiles">刷新列表</button></div><div id="profileList" class="muted">等待读取</div></div><div class="card form"><h2>下载新配置</h2><form id="downloadForm"><label>激活码</label><input id="activationCode" type="password" autocomplete="off" placeholder="LPA:1$服务器域名$令牌" required><label>确认码</label><input id="confirmationCode" type="password" autocomplete="off"><div class="actions"><button class="primary">开始下卡</button></div></form><p id="downloadState" role="status">尚未开始</p></div><details class="card" id="notificationPanel"><summary>LPA 通知</summary><div class="actions"><button id="refreshNotifications">刷新</button><button id="sendNotifications">发送全部</button></div><p id="notificationState" role="status">尚未发送</p><div id="notificationErrors"></div><div id="notificationList" class="muted">等待读取</div></details>
+</section>
+<section id="sms" class="hidden"><div class="card"><div class="row"><h2>最近短信</h2><button id="refreshSms">刷新</button></div><div id="smsList" class="muted">暂无记录</div></div></section>
+<section id="settings" class="hidden"><div class="card form"><label>访问密钥</label><input id="accessKey" type="password" autocomplete="off" placeholder="输入访问密钥"><button id="saveKey" style="margin-top:12px">连接设备</button></div><div class="card form"><form id="settingsForm"><label for="deviceName">设备名</label><input id="deviceName" required><label>Wi-Fi 名称</label><input id="ssid" required><label>Wi-Fi 密码</label><input id="password" type="password" autocomplete="new-password" placeholder="留空保留现有密码"><label>HTTP 转发地址</label><input id="forwardUrl" type="url" placeholder="http://你的服务/sms"><label>转发 Bearer Token</label><input id="forwardToken" type="password" autocomplete="new-password" placeholder="留空保留现有值"><label><input id="scEnabled" type="checkbox"> 启用 Server酱³</label><label>Server酱³ SendKey</label><input id="scKey" type="password" autocomplete="new-password" placeholder="SendKey，留空保留"><small id="scKeyState"></small><div class="actions"><button id="testPush" type="button">发送测试</button><span id="testPushResult" role="status"></span></div><div class="actions"><button class="primary">保存设置</button></div><div class="actions"><button id="rebootAir" type="button">重启 AIR780E</button><button id="reboot" type="button">重启 ESP32-C3</button></div></form></div></section>
+<div class="foot"><span id="refreshTime"></span></div></main><div id="notice" class="hidden" role="status"></div>
+<dialog id="tagDialog"><form id="tagForm"><div class="row"><strong>名称与标签</strong><button type="button" onclick="this.closest('dialog').close()" aria-label="关闭">关闭</button></div><label for="profileName">名称</label><input id="profileName" maxlength="64"><label for="profileTags">文字标签</label><textarea id="profileTags" rows="3" placeholder="每行一个标签"></textarea><label for="tagDate">日期标签</label><input id="tagDate" type="date"><label for="tagDateNote">日期备注</label><input id="tagDateNote"><div class="actions"><button class="primary">保存</button></div></form></dialog>
+<dialog id="detailsDialog"><div class="row"><strong>配置详情</strong><button onclick="this.closest('dialog').close()">关闭</button></div><div id="profileDetails"></div></dialog>
+
+<script>
+const $=id=>document.getElementById(id);let key=location.hash.slice(1)||localStorage.getItem('sim-key')||'',busy=false,tab='overview',cardLoaded=false,downloading=false,notifying=false,profileItems=[],editingIccid='',pendingTab=false;if(location.hash){localStorage.setItem('sim-key',key);history.replaceState(null,'',location.pathname)}$('accessKey').value=key;
+function note(s){$('notice').textContent=s;$('notice').classList.remove('hidden');clearTimeout(window.nt);window.nt=setTimeout(()=>$('notice').classList.add('hidden'),5000)}
+async function api(path,data){
+ const controller=new AbortController(),limit=['profile','modem-reboot'].includes(path)?120000:path==='forward-test'?90000:['info','profiles','notifications'].includes(path)?45000:15000;
+ const timer=setTimeout(()=>controller.abort(),limit);
+ try{
+  const r=await fetch('/api/'+path,{method:data?'POST':'GET',headers:{Authorization:'Bearer '+key,...(data?{'Content-Type':'application/json'}:{})},body:data?JSON.stringify(data):undefined,signal:controller.signal});
+  const value=await r.json();if(!r.ok)throw Error(value.error||r.status);return value;
+ }catch(e){
+  if(e.name==='AbortError')throw Error(data?'请求超时，请先刷新确认操作结果':'读取超时，请重新刷新');
+  throw e;
+ }finally{clearTimeout(timer)}
+}
+async function action(fn){
+ if(busy){note('设备正在处理请求');return}
+ busy=true;
+ try{await fn()}catch(e){note(e.message)}finally{busy=false;if(pendingTab){pendingTab=false;action(loadTab)}}
+}
+function loadTab(){if(tab==='overview')return status();if(tab==='profiles')return profiles();if(tab==='sms')return messages();if(tab==='settings'&&key)return settings()}
+function el(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e}
+async function status(){const cardWasBusy=downloading||notifying;const s=await api('status');$('online').textContent='设备在线';$('ready').textContent=s.ready?'已就绪':'等待连接';$('version').textContent='应用 '+s.version;$('lua').textContent=(s.lua.free/1024).toFixed(1)+' KB';$('ram').textContent=(s.system.free/1024).toFixed(1)+' KB';$('luaBar').value=s.lua.used/s.lua.total*100;$('uptime').textContent='运行 '+Math.floor(s.uptime_seconds/60)+' 分 '+s.uptime_seconds%60+' 秒';$('ip').textContent=s.ip;$('refreshTime').textContent=' 更新于 '+new Date().toLocaleTimeString();downloadState(s.download);notificationState(s.notifications);radioState(s);if(s.ready&&!cardLoaded&&!downloading&&!notifying)await cardInfo();if(cardWasBusy&&!downloading&&!notifying&&tab==='profiles'){await profiles();if($('notificationPanel').open)await notifications()}}
+function radioState(s){
+ const m=s.modem||{},states={0:'未注册',1:'已注册',2:'搜索网络',3:'注册被拒绝',4:'网络未知',5:'已注册',6:'仅短信服务',7:'仅短信服务',8:'仅紧急服务',9:'已注册',10:'已注册',11:'仅紧急服务'};
+ $('ready').textContent=s.ready?(states[m.registration]||(m.error?'查询失败':'读取网络状态')):'等待连接';
+ $('operator').textContent=m.registered?(m.operator||'—'):'—';$('roaming').textContent=m.roaming===true?'是':m.roaming===false?'否':'—';
+ $('networkType').textContent=m.access_technology===7?'LTE':m.access_technology===0?'GSM':m.access_technology===2?'UTRAN':'—';
+ $('simState').textContent=m.sim_status==='READY'?'就绪':m.sim_status||'—';
+ $('currentIccid').textContent=m.iccid||'—';$('imei').textContent=m.imei||'—';
+ const q=m.csq;$('signal').textContent=q===0?'≤ -115 dBm':q===31?'≥ -51 dBm':q>0&&q<31?(q*2-113)+' dBm':'未知';
+ const parts=[];if(q!==undefined&&q!==99)parts.push('CSQ '+q);
+ if(m.rsrp!==undefined&&m.rsrp!==255)parts.push('RSRP '+(m.rsrp===0?'< -140':m.rsrp===97?'≥ -44':(m.rsrp-141)+'～'+(m.rsrp-140))+' dBm');
+ if(m.rsrq!==undefined&&m.rsrq!==255)parts.push('RSRQ '+(m.rsrq===0?'< -19.5':m.rsrq===34?'≥ -3':(m.rsrq/2-20)+'～'+(m.rsrq/2-19.5))+' dB');
+ $('signalDetail').textContent=parts.join(' · ');$('modemUpdated').textContent=s.modem_updating?'更新中…':m.error?m.error:m.updated_at?'更新于 '+new Date(m.updated_at*1000).toLocaleTimeString():'';
+}
+$('refreshModem').onclick=()=>action(async()=>{await api('modem',{});await status()});
+
+async function cardInfo(){const s=await api('info');$('eid').textContent=s.eid;const bytes=s.memory.free_nonvolatile;$('cardFree').textContent=bytes<1048576?(bytes/1024).toFixed(2)+' KiB':(bytes/1048576).toFixed(2)+' MiB';$('cardRam').textContent=s.memory.free_nonvolatile.toLocaleString()+' 字节可用';cardLoaded=true}
+function downloadState(s){if(!s)return;const was=downloading;downloading=s.state==='running';$('downloadState').textContent=s.stage+(s.written_bytes?' · 已处理 '+s.written_bytes.toLocaleString()+' 字节':'')+(s.warning?' · '+s.warning:'');if(was&&!downloading)cardLoaded=false}
+function parseNickname(value=''){
+ const tags=[];const name=value.replace(/\b([td]):([^\s]+)/gi,(_,type,raw)=>{tags.push({type:type.toLowerCase(),raw});return ''}).replace(/\s+/g,' ').trim();
+ return {name,tags};
+}
+const unescapeTag=s=>s.replaceAll('\x11',' ').replaceAll('\x03',':');
+const escapeTag=s=>s.replace(/\s/g,'\x11').replaceAll(':','\x03');
+function tagText(t){if(t.type==='t')return unescapeTag(t.raw);const [stamp,...rest]=t.raw.split(':'),digits=stamp.length===6?'20'+stamp:stamp;return digits.slice(0,4)+'-'+digits.slice(4,6)+'-'+digits.slice(6,8)+(rest.length?' · '+unescapeTag(rest.join(':')):'')}
+function renderProfiles(items){
+ profileItems=items;$('profileList').replaceChildren();
+ for(const p of items){
+  const parsed=parseNickname(p.nickname),name=parsed.name||p.name||p.provider||'未命名配置';
+  const box=el('div','','profile'),head=el('div','','row');head.append(el('strong',name),el('span',p.state===1?'使用中':'未启用',p.state===1?'badge':'muted'));box.append(head,el('div',p.iccid,'mono'));
+  if(parsed.tags.length){const tags=el('div','','tags');for(const t of parsed.tags)tags.append(el('span',tagText(t),'tag'));box.append(tags)}
+  const buttons=el('div','','actions');
+  const edit=el('button','名称 / 标签');edit.onclick=()=>editProfile(p);buttons.append(edit);
+  const details=el('button','详情');details.onclick=()=>{const content=$('profileDetails');content.replaceChildren();for(const [label,value] of [['名称',name],['运营商',p.provider],['Profile Name',p.name],['ICCID',p.iccid],['状态',p.state===1?'使用中':'未启用']]){content.append(el('div',label,'label'),el('p',value||'—','mono'))}$('detailsDialog').showModal()};buttons.append(details);
+  for(const [op,title] of (p.state===1?[['disable','停用']]:[['enable','启用'],['delete','删除']])){
+   const b=el('button',title,op==='delete'?'danger':'');b.onclick=()=>action(async()=>{
+    if(op==='delete'){
+     if(!confirm('永久删除「'+name+'」？此操作无法撤销。'))return;
+     if(prompt('再次确认：输入 ICCID 后六位 '+p.iccid.slice(-6)+' 才会删除')!==p.iccid.slice(-6)){note('已取消删除');return}
+    }
+    if(op==='disable'&&!confirm('停用后可能暂时无法接收短信，继续？'))return;
+    note(op==='delete'?'正在删除…':'正在切换，请等待模块重启…');
+    const result=await api('profile',{operation:op,iccid:p.iccid});renderProfiles(Array.isArray(result.profiles)?result.profiles:[]);cardLoaded=false;await status();note('操作完成');
+   });buttons.append(b)
+  }
+  box.append(buttons);$('profileList').append(box)
+ }
+ if(!items.length)$('profileList').textContent='没有配置';
+}
+async function profiles(){if(downloading||notifying){note('卡片任务正在运行');return}const v=await api('profiles');renderProfiles(Array.isArray(v.profiles)?v.profiles:[])}
+function editProfile(p){
+ const parsed=parseNickname(p.nickname);editingIccid=p.iccid;
+ $('profileName').value=parsed.name||p.name||p.provider||'';$('profileTags').value=parsed.tags.filter(t=>t.type==='t').map(t=>unescapeTag(t.raw)).join('\n');
+ const date=parsed.tags.find(t=>t.type==='d');$('tagDate').value='';$('tagDateNote').value='';
+ if(date){const [stamp,...rest]=date.raw.split(':'),digits=stamp.length===6?'20'+stamp:stamp;$('tagDate').value=digits.slice(0,4)+'-'+digits.slice(4,6)+'-'+digits.slice(6,8);$('tagDateNote').value=unescapeTag(rest.join(':'))}
+ $('tagDialog').showModal();
+}
+$('tagForm').onsubmit=e=>{e.preventDefault();action(async()=>{
+ const name=$('profileName').value.trim(),tags=$('profileTags').value.split('\n').map(t=>t.trim()).filter(Boolean).map(t=>'t:'+escapeTag(t));
+ if($('tagDate').value)tags.push('d:'+$('tagDate').value.replaceAll('-','')+($('tagDateNote').value.trim()?':'+escapeTag($('tagDateNote').value.trim()):''));
+ const nickname=name+(tags.length?'\n'+tags.join(' '):'');
+ if([...nickname].length>64)throw Error('名称和标签合计最多 64 个字符');
+ await api('nickname',{iccid:editingIccid,nickname});$('tagDialog').close();await profiles();note('已保存');
+})};
+function notificationState(s){if(!s)return;notifying=s.state==='running';$('notificationState').textContent=s.stage||'尚未发送';$('notificationErrors').replaceChildren();for(const item of (Array.isArray(s.errors)?s.errors:[]))$('notificationErrors').append(el('p','#'+item.sequence+' · '+item.error,'mono danger'))}
+async function notifications(){if(downloading||notifying){note('卡片任务正在运行');return}const v=await api('notifications'),items=Array.isArray(v.notifications)?v.notifications:[];$('notificationList').replaceChildren();for(const n of items){const box=el('div','','profile'),row=el('div','','row');row.append(el('strong','#'+n.sequence+' · '+({install:'安装',enable:'启用',disable:'停用',delete:'删除'}[n.operation]||'其他')),el('span','待发送','muted'));box.append(row,el('div',n.address,'mono'));if(n.iccid)box.append(el('div',n.iccid,'mono'));const b=el('button','发送');b.onclick=()=>action(()=>sendNotifications(n.id));box.append(b);$('notificationList').append(box)}if(!items.length)$('notificationList').textContent='没有待发通知'}
+async function sendNotifications(id){await api('notifications',id?{id}:{});notificationState(await api('notification-status'))}
+$('refreshNotifications').onclick=()=>action(notifications);$('sendNotifications').onclick=()=>action(()=>sendNotifications());
+$('notificationPanel').ontoggle=()=>{if($('notificationPanel').open)action(notifications)};
+
+async function messages(){const v=await api('sms');$('smsList').replaceChildren();for(const m of (Array.isArray(v.messages)?[...v.messages]:[]).reverse()){const box=el('div','','profile');box.append(el('strong',m.sender),el('div',m.timestamp,'sub'),el('div',m.text||'二进制短信（已保留原始 PDU）','message'));$('smsList').append(box)}if(!v.messages.length)$('smsList').textContent='暂无短信'}
+async function settings(){const s=await api('settings');$('deviceName').value=s.device_name;$('ssid').value=s.ssid;$('forwardUrl').value=s.forward_url;$('scEnabled').checked=s.serverchan3_enabled;$('scKeyState').textContent=s.has_serverchan3_key?'已保存 SendKey':''}
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
+ tab=b.dataset.tab;document.querySelectorAll('section').forEach(s=>s.classList.toggle('hidden',s.id!==tab));document.querySelectorAll('[data-tab]').forEach(n=>n.classList.toggle('active',n===b));
+ if(busy){pendingTab=true;return}action(loadTab);
+});
+$('readEid').onclick=()=>action(cardInfo);$('refreshProfiles').onclick=()=>action(profiles);$('refreshSms').onclick=()=>action(messages);$('saveKey').onclick=()=>action(async()=>{key=$('accessKey').value;localStorage.setItem('sim-key',key);await status();await settings();note('已连接')});$('settingsForm').onsubmit=e=>{e.preventDefault();action(async()=>{const s=await api('settings',{device_name:$('deviceName').value,ssid:$('ssid').value,password:$('password').value,forward_url:$('forwardUrl').value,forward_token:$('forwardToken').value,serverchan3_enabled:$('scEnabled').checked,serverchan3_key:$('scKey').value});$('password').value=$('forwardToken').value=$('scKey').value='';note(s.restart_required?'已保存，重启 C3 后连接新 Wi-Fi':'设置已保存')})};$('reboot').onclick=()=>action(async()=>{if(confirm('现在重启 ESP32-C3？')){await api('reboot',{});note('正在重启，请稍候刷新')}});
+$('testPush').onclick=()=>action(async()=>{const output=$('testPushResult');output.textContent='发送中…';output.classList.remove('danger');try{const results=await api('forward-test',{});output.textContent=Object.entries(results).map(([channel,result])=>({http:'HTTP',serverchan3:'Server酱³'}[channel]+'：'+result.message)).join('；');output.classList.toggle('danger',Object.values(results).some(result=>!result.ok))}catch(e){output.textContent=e.message;output.classList.add('danger')}});
+$('rebootAir').onclick=()=>action(async()=>{if(!confirm('现在重启 AIR780E？'))return;note('AIR780E 重启中…');await api('modem-reboot',{});cardLoaded=false;await status();note('AIR780E 已就绪')});
+$('downloadForm').onsubmit=e=>{e.preventDefault();action(async()=>{if(!confirm('使用此激活码下载并安装新配置？'))return;await api('download',{activation_code:$('activationCode').value.trim(),confirmation_code:$('confirmationCode').value});$('activationCode').value=$('confirmationCode').value='';downloading=true;downloadState(await api('download'))})};
+window.addEventListener('load',()=>{if(key)action(status);else{note('请在设置中输入访问密钥');document.querySelector('[data-tab=settings]').click()}});setInterval(()=>{if(!busy&&key){if(tab==='overview')action(status);else if(downloading||notifying||tab==='profiles')action(status)}},7000);
+</script></html>
+
+
+
+
+

@@ -1,0 +1,6 @@
+{
+  "esp-idf": "e088c3766ba440e72268b458a68f27b6e7d63986",
+  "LuatOS": "da2373564e282b420ffcdb6080323bffbd36f947",
+  "luatos-soc-idf5": "bc90eaa2921bdb63bc0b1dc238df75fa83b04f90",
+  "mbedtls": "65b3c0857c9f207dcb0b646f2b4ebd8e5edf83c1"
+}

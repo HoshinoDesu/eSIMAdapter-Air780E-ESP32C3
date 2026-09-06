@@ -1,0 +1,17 @@
+diff --git a/components/network/adapter_lwip2/net_lwip2.c b/components/network/adapter_lwip2/net_lwip2.c
+index 290bc13..76a073c 100644
+--- a/components/network/adapter_lwip2/net_lwip2.c
++++ b/components/network/adapter_lwip2/net_lwip2.c
+@@ -400,6 +400,12 @@ static err_t net_lwip2_tcp_fast_accept_cb(void *arg, struct tcp_pcb *newpcb, err
+ 		net_lwip2_tcp_error(adapter_index, socket_id);
+ 		return 0;
+ 	}
++	/* Keep the accepted connection in its slot until it closes.
++	 * lwIP rejects a new connection when accept returns ERR_MEM. */
++	if (prvlwip.socket[socket_id].pcb.tcp)
++	{
++		return ERR_MEM;
++	}
+ 	prvlwip.socket[socket_id].pcb.tcp = newpcb;
+ 	// prvlwip.socket[socket_id].pcb.tcp->sockid = socket_id;
+ 	prvlwip.socket[socket_id].rx_wait_size = 0;
