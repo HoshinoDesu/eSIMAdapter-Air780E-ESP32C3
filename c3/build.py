@@ -12,7 +12,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parent
 COMPILER = os.environ.get("LUAC", "luac_536")
-SOURCES = ["main", "config", "modem", "euicc", "sms", "debug_link", "settings", "web", "outbound", "forward", "lpa", "bpp", "notifications", "radio"]
+SOURCES = ["main", "config", "modem", "euicc", "sms", "device_status", "settings", "web", "outbound", "forward", "lpa", "bpp", "notifications", "radio", "push", "provision"]
 
 
 def tlv(kind, data):
@@ -35,9 +35,10 @@ def main():
         assert data[:17] == bytes.fromhex("1b4c7561530019930d0a1a0a0404040404"), "Need Lua 5.3 / 32-bit compiler"
         files.append((dest.name.encode(), data))
         sizes[src.name] = {"source": src.stat().st_size, "compiled": len(data)}
-    page = gzip.compress((ROOT / "panel.html").read_bytes(), mtime=0)
-    files.append((b"panel.html.gz", page))
-    sizes["panel.html.gz"] = {"compiled": len(page)}
+    for name in ["panel.html", "setup.html"]:
+        page = gzip.compress((ROOT / name).read_bytes(), mtime=0)
+        files.append(((name + ".gz").encode(), page))
+        sizes[name + ".gz"] = {"compiled": len(page)}
     magic = tlv(1, bytes.fromhex("5aa55aa5"))
     database = header(magic + tlv(2, struct.pack("<H", 2)) +
                       tlv(3, struct.pack("<I", 24)) + tlv(4, struct.pack("<H", len(files))))

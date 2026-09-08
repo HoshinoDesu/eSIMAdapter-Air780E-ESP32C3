@@ -5,10 +5,10 @@ local aid = "A0000005591010FFFFFFFF8900000100"
 
 local function unhex(s)
     assert(#s % 2 == 0 and s:match('^%x+$'), "Invalid APDU hex")
-    return (s:gsub('..', function(v) return string.char(tonumber(v, 16)) end))
+    return string.fromHex(s)
 end
 local function hex(s)
-    return (s:gsub('.', function(v) return string.format('%02X', v:byte()) end))
+    return (string.toHex(s))
 end
 
 local function tlvs(s)
@@ -55,7 +55,7 @@ function M.open(app)
 end
 function M.close(channel) modem.command("AT+CCHC=" .. channel, 10000); return true end
 function M.transmit(channel, apdu)
-    unhex(apdu)
+    assert(#apdu % 2 == 0 and apdu:match('^%x+$'), 'Invalid APDU hex')
     local lines = modem.command(string.format('AT+CGLA=%d,%d,"%s"', channel, #apdu, apdu), 30000)
     for _, line in ipairs(lines) do
         local value = line:match('^%+CGLA:%s*%d+,%s*"?(%x+)')
@@ -68,6 +68,7 @@ local function exchange_stream(channel, size, read)
     assert(channel >= 1 and channel <= 3, "Local ES10c supports channels 1..3")
     local chunks, sw = {}, nil
     for pos = 1, size, 255 do
+        collectgarbage('collect')
         local piece = read(math.min(255, size - pos + 1))
         local apdu = string.char(0x80 | channel, 0xE2,
             pos + 254 >= size and 0x91 or 0x11, (pos - 1) // 255, #piece) .. piece
@@ -125,7 +126,7 @@ function M.info()
 end
 function M.list()
     return session(function(ch)
-        local raw, sw = exchange(ch, unhex("BF2D00")); local profiles = {}
+        local raw, sw = exchange(ch, unhex("BF2D085C065A9F70909192")); local profiles = {}
         for tag, value in tlvs(field(field(raw, 0xBF2D), 0xA0)) do
             if tag == 0xE3 then
                 local p = {}

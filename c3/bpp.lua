@@ -3,12 +3,23 @@ local euicc = require('euicc')
 local M = {}
 local function chars(f)
     local buffer, pos, offset = '', 1, f:seek()
-    return function()
+    local function get()
         if pos > #buffer then buffer=f:read(1024) or ''; pos=1 end
         if #buffer == 0 then return end
         local c=buffer:sub(pos,pos); pos=pos+1; offset=offset+1
         return c, offset
     end
+    local function run(n, finish)
+        if pos > #buffer then buffer=f:read(1024) or ''; pos=1 end
+        local size=math.min(n,#buffer-pos+1,finish-offset)
+        if size<=0 then return nil end
+        local value=buffer:sub(pos,pos+size-1)
+        local special=value:find('[\\%s]')
+        if special then value=value:sub(1,special-1) end
+        pos=pos+#value; offset=offset+#value
+        return value
+    end
+    return get,run
 end
 function M.scan(f)
     f:seek('set',0)
@@ -43,25 +54,28 @@ function M.scan(f)
 end
 function M.install(f, start, finish, ch, progress)
     f:seek('set',start)
-    local get=chars(f)
+    local get,run=chars(f)
     local pending,consumed='',0
     local function read(n)
         while #pending<n do
-            local encoded={}
+            local encoded=''
             while #encoded<256 do
-                local c,offset=get()
-                if not c or offset>finish then break end
-                if c=='\\' then
-                    c=get()
-                    if c=='u' then
-                        local h=get()..get()..get()..get(); c=string.char(tonumber(h,16))
-                    elseif c=='n' or c=='r' or c=='t' then c=' ' end
+                local value=run(256-#encoded,finish)
+                if value==nil then break end
+                if value~='' then encoded=encoded..value
+                else
+                    local c=get()
+                    if c=='\\' then
+                        c=get()
+                        if c=='u' then
+                            local h=get()..get()..get()..get(); c=string.char(tonumber(h,16))
+                        elseif c=='n' or c=='r' or c=='t' then c=' ' end
+                    end
+                    if not c:match('%s') then encoded=encoded..c end
                 end
-                if not c:match('%s') then encoded[#encoded+1]=c end
-                if #encoded>=256 and #encoded%4==0 then break end
             end
             assert(#encoded>0 and #encoded%4==0,'Incomplete base64 package')
-            pending=pending..crypto.base64_decode(table.concat(encoded))
+            pending=pending..crypto.base64_decode(encoded)
         end
         local value=pending:sub(1,n); pending=pending:sub(n+1); consumed=consumed+n
         return value

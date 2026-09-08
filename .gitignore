@@ -28,4 +28,4 @@ __pycache__/
 *.jsonl
 
 # Sanitized public firmware package
-!/firmware/prebuilt/air780e-euicc-0.3.11.zip
+!/firmware/prebuilt/air780e-euicc-0.3.18.zip

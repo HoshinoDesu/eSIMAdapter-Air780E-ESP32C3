@@ -7,10 +7,8 @@
 local sys = require('sys')
 local config = require('config')
 local settings = require('settings')
-local link = require('debug_link')
-local euicc = require('euicc')
-local sms = require('sms')
-local lpa = require('lpa')
+local link, euicc, sms, lpa
+local setup_mode = false
 local M = {}
 local events = {}
 local function callback(ctrl, event, param)
@@ -61,14 +59,39 @@ local function serve(ctrl)
     buff:free()
     local method, path = request:match('^(%u+) ([^ ]+)')
     if method == 'GET' and path == '/' then
-        local f = assert(io.open('/luadb/panel.html.gz', 'rb'), 'Page file missing')
+        local f = assert(io.open(setup_mode and '/luadb/setup.html.gz' or '/luadb/panel.html.gz', 'rb'), 'Page file missing')
         send(ctrl, 'HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Encoding: gzip\r\nConnection: close\r\n\r\n')
         while true do local chunk=f:read(1024); if not chunk then break end; send(ctrl, chunk) end
         f:close(); return
     end
+    if setup_mode then
+        if method == 'GET' and path == '/api/provision' then
+            response(ctrl, '200 OK', json.encode({ssid=config.wifi.ssid,has_key=config.access_key~=''}))
+        elseif method == 'POST' and path == '/api/provision' then
+            local ok,value=pcall(function()
+                local kind=request:sub(1,split):lower():match('\r\ncontent%-type:%s*([^\r]+)') or ''
+                assert(kind:match('^application/json'), '请求需要 JSON 格式')
+                return settings.provision(json.decode(request:sub(split+4,wanted)))
+            end)
+            response(ctrl,ok and '200 OK' or '400 Bad Request',json.encode(ok and value or {error=tostring(value)}))
+            if ok then sys.timerStart(rtos.reboot,1000) end
+        else response(ctrl, '404 Not Found', '{"error":"配网模式"}') end
+        return
+    end
     local authorization = request:match('\r\n[Aa]uthorization:%s*([^\r]+)')
-    if authorization ~= 'Bearer ' .. config.debug_token then
+    if config.access_key == '' or authorization ~= 'Bearer ' .. config.access_key then
         response(ctrl, '401 Unauthorized', '{"error":"请输入面板访问密钥"}'); return
+    end
+    if method == 'GET' and path == '/api/download-log' then
+        local f=io.open('/lpa-download.log','rb')
+        if not f then response(ctrl,'200 OK','尚无下卡日志','text/plain; charset=utf-8'); return end
+        send(ctrl,'HTTP/1.0 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n')
+        local ok,err=pcall(function()
+            while true do local chunk=f:read(512); if not chunk then break end; send(ctrl,chunk) end
+        end)
+        f:close()
+        if not ok then error(err,0) end
+        return
     end
     local body = request:sub(split + 4, wanted)
     local ok, value = pcall(function()
@@ -112,6 +135,10 @@ local function serve(ctrl)
         if method == 'POST' and path == '/api/modem-reboot' then
             return {ready=require('modem').restart()}
         end
+        if method == 'POST' and path == '/api/provision-mode' then
+            assert(lpa.job.state~='running' and lpa.notification_job.state~='running', '卡片任务正在运行')
+            return require('provision').request()
+        end
         if method == 'POST' and path == '/api/reboot' then
             sys.timerStart(rtos.reboot, 1000); return {rebooting=true}
         end
@@ -120,10 +147,15 @@ local function serve(ctrl)
     response(ctrl, ok and '200 OK' or '400 Bad Request', json.encode(ok and value or {error=tostring(value)}))
 end
 
-function M.start()
+function M.start(provisioning)
+    setup_mode=provisioning==true
+    if not setup_mode then
+        link=require('device_status'); euicc=require('euicc'); sms=require('sms'); lpa=require('lpa')
+    end
+    local adapter=setup_mode and socket.LWIP_AP or socket.LWIP_STA
     sys.taskInit(function()
-        while not socket.adapter(socket.LWIP_STA) do sys.wait(1000) end
-        local server = assert(socket.create(socket.LWIP_STA, callback), 'Cannot create HTTP socket')
+        while not socket.adapter(adapter) do sys.wait(1000) end
+        local server = assert(socket.create(adapter, callback), 'Cannot create HTTP socket')
         events = {}
         assert(socket.config(server, 80), 'Cannot set HTTP port')
         local ok, up = socket.linkup(server)

@@ -10,12 +10,14 @@ python -m venv .venv-esp
 Copy-Item c3/config.example.lua c3/config.lua
 ```
 
-在 `c3/config.lua` 中填写 Wi-Fi 名称、密码和网页访问密钥 `debug_token`，然后编译。`LUAC` 改为自己的编译器路径：
+可在 `c3/config.lua` 中预填 Wi-Fi 和网页访问密钥 `access_key`，也可以留空、刷写后通过热点配网。然后编译。`LUAC` 改为自己的编译器路径：
 
 ```powershell
 $env:LUAC = 'D:\Luatools\_temp\tools\luac_536.exe'
 .\.venv-esp\Scripts\python.exe c3/build.py
 ```
+
+`config.lua` 可设置设备名、Wi-Fi、网页访问密钥、HTTP 转发和 Server酱³。网页中保存的设置优先于文件中的初始值。`provisioning` 可设置热点密码和开机联网等待时间；初次配网设置访问密钥，重新配网使用原密钥。
 
 生成文件为 `c3/build/script.bin`。首次刷写按 [固件包说明](../firmware/prebuilt/README.md) 操作，使用生成的脚本替换包内 `script.bin`。
 
